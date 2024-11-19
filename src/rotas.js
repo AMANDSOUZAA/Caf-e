@@ -1,25 +1,32 @@
 const express = require('express');
-const rotas = express();
-const verificaLogin = require('./autenticacao')
-const { cadastrarUsuario, login, logout, atualizarUsuario, detalharUsuario } = require('./controladores/usuario');
-const { listarTransacao, cadastrarTransacao, excluirTransacao, detalharTransacao, listarProdutos, adicionarProduto, deletarProduto, atualizarTransacao } = require('./controladores/transacao');
+const { enviarEmail } = require('./emailService');  // Importe a função de envio de e-mail
+const User = require('../models/User');  // Importação do modelo de usuário
+const router = express.Router();
 
-rotas.post('/usuario', cadastrarUsuario); // User and Admin
-rotas.post('/login', login) // User and admin
-rotas.use(verificaLogin);
-rotas.get('/logout', logout) // User and Admin
-rotas.get('/usuario', detalharUsuario) // User and Admin
-rotas.put('/usuario', atualizarUsuario) // User and Admin
+// Rota para cadastro de novo usuário
+router.post('/cadastro', async (req, res) => {
+  const { nome, email, senha } = req.body;
 
-rotas.get('/produtos', listarProdutos) // User and Admin
-rotas.post('/produtos', adicionarProduto) // Admin
-rotas.delete('/produtos', deletarProduto) // Admin
+  try {
+    // Criação de um novo usuário
+    const novoUsuario = new User({ nome, email, senha });
 
-rotas.get('/transacao', listarTransacao) // User and Admin
-rotas.get('/transacao/:id', detalharTransacao) // User and Admin
-rotas.post('/transacao', cadastrarTransacao) // User and Admin
-rotas.delete('/transacao/:id', excluirTransacao) // Admin
-rotas.put('/transacao/:id', atualizarTransacao) // Admin
+    // Salve o novo usuário no banco de dados
+    await novoUsuario.save();
 
+    // Assunto e mensagem do e-mail
+    const assunto = 'Bem-Vindo ao Nosso Site!';
+    const mensagem = `Olá ${nome},\n\nSeja bem-vindo ao nosso site! Seu cadastro foi concluído com sucesso.`;
 
-module.exports = rotas
+    // Envia o e-mail de boas-vindas
+    await enviarEmail(email, assunto, mensagem);
+
+    // Retorna resposta de sucesso
+    res.status(201).json({ message: 'Usuário cadastrado e e-mail de boas-vindas enviado!' });
+  } catch (error) {
+    console.error('Erro no cadastro de usuário:', error);
+    res.status(500).json({ message: 'Erro no cadastro do usuário' });
+  }
+});
+
+module.exports = router;
